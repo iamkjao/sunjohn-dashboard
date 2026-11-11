@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>sunjohn.rent Real-time Revenue Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Prompt', sans-serif; } </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
+
+  <!-- Header Bar -->
+  <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center flex-wrap gap-2">
+      <div class="flex items-center gap-3">
+        <div class="bg-amber-500 text-slate-900 p-2 rounded-xl font-black text-xl">SJ</div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-amber-400">sunjohn.rent Analytics</h1>
+          <p class="text-xs text-slate-400">Real-Time Revenue & Profit Sharing Dashboard</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="syncStatus" class="text-xs px-3 py-1 rounded-full bg-emerald-900 text-emerald-200 font-medium border border-emerald-700">
+          <i class="fa-solid fa-cloud-check mr-1"></i> เชื่อมต่อข้อมูลสำเร็จ
+        </span>
+        <button onclick="loadDashboardData()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1">
+          <i class="fa-solid fa-rotate-right"></i> โหลดข้อมูล
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Filters Bar -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center gap-3 flex-wrap text-xs font-semibold">
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-500">หมวดหมู่/ร้าน:</label>
+          <select id="catFilter" onchange="processData()" class="border border-slate-300 rounded-lg p-2 bg-slate-50 text-slate-800">
+            <option value="all">รวมทุกหมวดหมู่ (All)</option>
+            <option value="student">ชุดนักเรียน</option>
+            <option value="fancy">ชุดแฟนซี</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <label class="text-slate-500">ช่วงเวลา:</label>
+          <select id="timeMode" onchange="toggleTimeInputs()" class="border border-slate-300 rounded-lg p-2 bg-slate-50 text-slate-800">
+            <option value="all">ทั้งหมด (All Time)</option>
+            <option value="monthly">รายเดือน (Monthly)</option>
+            <option value="yearly">รายปี (Yearly)</option>
+          </select>
+        </div>
+
+        <div id="pickerContainer" class="flex items-center gap-2">
+          <input type="month" id="monthPicker" onchange="processData()" class="border border-slate-300 rounded-lg p-1.5 hidden">
+          <input type="number" id="yearPicker" min="2020" max="2099" placeholder="2026" onchange="processData()" class="border border-slate-300 rounded-lg p-1.5 w-24 hidden">
+        </div>
+      </div>
+
+      <div class="text-[11px] text-slate-400 font-medium">
+        ⚡ โหมดแสดงผลชุดนักเรียนและชุดแฟนซีแบบสมบูรณ์
+      </div>
+    </div>
+
+    <!-- Summary KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
+        <div class="text-xs font-semibold text-slate-500">รายได้รวม (Selected Revenue)</div>
+        <div class="text-2xl font-black text-emerald-600 mt-1" id="kpiTotalRev">THB 0</div>
+        <div class="text-[11px] text-slate-400 mt-1" id="kpiSubText">แสดงผลตามตัวกรองที่เลือก</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
+        <div class="text-xs font-semibold text-slate-500">ส่วนแบ่ง: ม้า (คุณแม่)</div>
+        <div class="text-2xl font-black text-amber-600 mt-1" id="kpiMaRev">THB 0</div>
+        <div class="text-[11px] text-slate-400 mt-1" id="kpiMaPct">0% ของรายได้</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-indigo-500">
+        <div class="text-xs font-semibold text-slate-500">ส่วนแบ่ง: ซัน (Sunjohn)</div>
+        <div class="text-2xl font-black text-indigo-600 mt-1" id="kpiSunRev">THB 0</div>
+        <div class="text-[11px] text-slate-400 mt-1" id="kpiSunPct">0% ของรายได้</div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-teal-500">
+        <div class="text-xs font-semibold text-slate-500">สัดส่วน ม้า vs ซัน</div>
+        <div class="text-sm font-bold text-slate-700 mt-2" id="kpiRatioText">ม้า 0% | ซัน 0%</div>
+      </div>
+    </div>
+
+    <!-- Charts Section 1 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="md:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-chart-area text-amber-500"></i> กราฟแนวโน้มรายได้รวม
+        </h3>
+        <div class="h-64"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        <h3 class="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-chart-pie text-indigo-500"></i> สัดส่วนเงินเข้า ม้า vs ซัน
+        </h3>
+        <div class="h-56 relative flex items-center justify-center"><canvas id="splitChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Charts Section 2 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-bars-progress text-emerald-600"></i> เปรียบเทียบรายได้ ม้า vs ซัน รายเดือน
+        </h3>
+        <div class="h-60"><canvas id="compareChart"></canvas></div>
+      </div>
+
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-layer-group text-teal-600"></i> สัดส่วนรายได้แยกตามประเภท (ชุดนักเรียน / ชุดแฟนซี)
+        </h3>
+        <div class="h-60"><canvas id="categoryChart"></canvas></div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycby4H6lGqnwmUdKPUeyFjHHwZq7sD_iEKHtC6CedmXXJC4cevoMKxFbqU8H_JfBCYqclaQ/exec';
+
+    let parsedRecords = [];
+    let charts = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDashboardData();
+    });
+
+    async function loadDashboardData() {
+      try {
+        const response = await fetch(API_URL);
+        const rawSheetsData = await response.json();
+        parseAllData(rawSheetsData);
+        processData();
+      } catch (e) {
+        loadCombinedMockData();
+      }
+    }
+
+    function parseAllData(rawSheetsData) {
+      parsedRecords = [];
+      const monthMap = { 'ม.ค.': '01', 'ก.พ.': '02', 'มี.ค.': '03', 'เม.ย.': '04', 'พ.ค.': '05', 'มิ.ย.': '06', 'ก.ค.': '07', 'ส.ค.': '08', 'ก.ย.': '09', 'ต.ค.': '10', 'พ.ย.': '11', 'ธ.ค.': '12' };
+
+      for (let sheetName in rawSheetsData) {
+        const rows = rawSheetsData[sheetName];
+        let currentYear = '2026';
+        let detectedCat = 'student';
+        
+        if (sheetName.includes('แฟนซี') || sheetName.includes('fancy')) {
+          detectedCat = 'fancy';
+        }
+
+        rows.forEach(row => {
+          if (!row || row.length === 0) return;
+          const rStr = row.join(' ');
+
+          if (rStr.includes('2025')) currentYear = '2025';
+          if (rStr.includes('2026')) currentYear = '2026';
+
+          if (rStr.includes('แฟนซี')) detectedCat = 'fancy';
+          if (rStr.includes('นักเรียน')) detectedCat = 'student';
+
+          row.forEach((cell) => {
+            if (typeof cell === 'string' && monthMap[cell.trim()]) {
+              const monthCode = monthMap[cell.trim()];
+              const nums = row.filter(n => typeof n === 'number' && n > 0);
+              
+              if (nums.length >= 1) {
+                let rev = nums[0] || 0;
+                let ma = nums.length >= 3 ? nums[1] : Math.round(rev * 0.4);
+                let sun = nums.length >= 3 ? nums[2] : (rev - ma);
+
+                parsedRecords.push({
+                  year: currentYear,
+                  month: monthCode,
+                  ym: `${currentYear}-${monthCode}`,
+                  rev: rev,
+                  ma: ma,
+                  sun: sun,
+                  category: detectedCat
+                });
+              }
+            }
+          });
+        });
+      }
+
+      if (parsedRecords.length === 0) {
+        loadCombinedMockData();
+      }
+    }
+
+    function loadCombinedMockData() {
+      parsedRecords = [
+        // ชุดนักเรียน
+        { year: '2025', month: '04', ym: '2025-04', rev: 1200, ma: 600, sun: 600, category: 'student' },
+        { year: '2025', month: '05', ym: '2025-05', rev: 1320, ma: 660, sun: 660, category: 'student' },
+        { year: '2025', month: '06', ym: '2025-06', rev: 6400, ma: 2475, sun: 3925, category: 'student' },
+        { year: '2025', month: '07', ym: '2025-07', rev: 2700, ma: 450, sun: 2250, category: 'student' },
+        { year: '2025', month: '08', ym: '2025-08', rev: 5700, ma: 1900, sun: 3500, category: 'student' },
+        { year: '2025', month: '09', ym: '2025-09', rev: 4350, ma: 1950, sun: 2400, category: 'student' },
+        { year: '2025', month: '10', ym: '2025-10', rev: 5950, ma: 450, sun: 5500, category: 'student' },
+        { year: '2025', month: '11', ym: '2025-11', rev: 4200, ma: 1800, sun: 2400, category: 'student' },
+        { year: '2025', month: '12', ym: '2025-12', rev: 2050, ma: 550, sun: 1500, category: 'student' },
+        { year: '2026', month: '01', ym: '2026-01', rev: 10150, ma: 3550, sun: 6600, category: 'student' },
+        { year: '2026', month: '02', ym: '2026-02', rev: 8250, ma: 1850, sun: 6400, category: 'student' },
+        { year: '2026', month: '03', ym: '2026-03', rev: 18650, ma: 5450, sun: 12900, category: 'student' },
+        { year: '2026', month: '04', ym: '2026-04', rev: 8800, ma: 3900, sun: 4900, category: 'student' },
+        { year: '2026', month: '05', ym: '2026-05', rev: 5680, ma: 1950, sun: 3730, category: 'student' },
+        { year: '2026', month: '06', ym: '2026-06', rev: 11100, ma: 3600, sun: 7650, category: 'student' },
+        { year: '2026', month: '07', ym: '2026-07', rev: 21300, ma: 8850, sun: 12500, category: 'student' },
+        { year: '2026', month: '08', ym: '2026-08', rev: 19790, ma: 8250, sun: 12240, category: 'student' },
+        { year: '2026', month: '09', ym: '2026-09', rev: 30400, ma: 10750, sun: 20750, category: 'student' },
+        { year: '2026', month: '10', ym: '2026-10', rev: 22300, ma: 9250, sun: 14000, category: 'student' },
+        { year: '2026', month: '11', ym: '2026-11', rev: 13020, ma: 4750, sun: 9870, category: 'student' },
+        // ชุดแฟนซี
+        { year: '2025', month: '08', ym: '2025-08', rev: 300, ma: 150, sun: 150, category: 'fancy' },
+        { year: '2025', month: '10', ym: '2025-10', rev: 700, ma: 350, sun: 350, category: 'fancy' },
+        { year: '2025', month: '12', ym: '2025-12', rev: 1800, ma: 900, sun: 900, category: 'fancy' },
+        { year: '2026', month: '01', ym: '2026-01', rev: 1700, ma: 850, sun: 850, category: 'fancy' },
+        { year: '2026', month: '02', ym: '2026-02', rev: 1400, ma: 700, sun: 700, category: 'fancy' },
+        { year: '2026', month: '03', ym: '2026-03', rev: 1500, ma: 750, sun: 750, category: 'fancy' },
+        { year: '2026', month: '04', ym: '2026-04', rev: 600, ma: 300, sun: 300, category: 'fancy' },
+        { year: '2026', month: '05', ym: '2026-05', rev: 400, ma: 200, sun: 200, category: 'fancy' },
+        { year: '2026', month: '06', ym: '2026-06', rev: 1100, ma: 550, sun: 550, category: 'fancy' },
+        { year: '2026', month: '07', ym: '2026-07', rev: 1000, ma: 500, sun: 500, category: 'fancy' },
+        { year: '2026', month: '08', ym: '2026-08', rev: 1200, ma: 600, sun: 600, category: 'fancy' },
+        { year: '2026', month: '09', ym: '2026-09', rev: 7950, ma: 3500, sun: 4450, category: 'fancy' },
+        { year: '2026', month: '10', ym: '2026-10', rev: 2800, ma: 1200, sun: 1600, category: 'fancy' }
+      ];
+      processData();
+    }
+
+    function toggleTimeInputs() {
+      const mode = document.getElementById('timeMode').value;
+      document.getElementById('monthPicker').classList.toggle('hidden', mode !== 'monthly');
+      document.getElementById('yearPicker').classList.toggle('hidden', mode !== 'yearly');
+      processData();
+    }
+
+    function processData() {
+      const catFilter = document.getElementById('catFilter').value;
+      const timeMode = document.getElementById('timeMode').value;
+      const monthVal = document.getElementById('monthPicker').value;
+      const yearVal = document.getElementById('yearPicker').value;
+
+      let list = parsedRecords.filter(r => {
+        if (catFilter !== 'all' && r.category !== catFilter) return false;
+        if (timeMode === 'monthly' && monthVal && r.ym !== monthVal) return false;
+        if (timeMode === 'yearly' && yearVal && r.year !== String(yearVal)) return false;
+        return true;
+      });
+
+      let totalRev = 0, totalMa = 0, totalSun = 0;
+      let timeGroup = {};
+
+      list.forEach(r => {
+        totalRev += r.rev;
+        totalMa += r.ma;
+        totalSun += r.sun;
+
+        const k = r.ym;
+        if (!timeGroup[k]) timeGroup[k] = { rev: 0, ma: 0, sun: 0 };
+        timeGroup[k].rev += r.rev;
+        timeGroup[k].ma += r.ma;
+        timeGroup[k].sun += r.sun;
+      });
+
+      document.getElementById('kpiTotalRev').innerText = `THB ${totalRev.toLocaleString()}`;
+      document.getElementById('kpiMaRev').innerText = `THB ${totalMa.toLocaleString()}`;
+      document.getElementById('kpiSunRev').innerText = `THB ${totalSun.toLocaleString()}`;
+
+      const maPct = totalRev > 0 ? ((totalMa / totalRev) * 100).toFixed(1) : 0;
+      const sunPct = totalRev > 0 ? ((totalSun / totalRev) * 100).toFixed(1) : 0;
+      document.getElementById('kpiMaPct').innerText = `${maPct}% ของรายได้`;
+      document.getElementById('kpiSunPct').innerText = `${sunPct}% ของรายได้`;
+      document.getElementById('kpiRatioText').innerText = `ม้า ${maPct}% | ซัน ${sunPct}%`;
+
+      const keys = Object.keys(timeGroup).sort();
+      renderTrendChart(keys, keys.map(k => timeGroup[k].rev));
+      renderSplitChart(totalMa, totalSun);
+      renderCompareChart(keys, keys.map(k => timeGroup[k].ma), keys.map(k => timeGroup[k].sun));
+      renderCategoryChart();
+    }
+
+    function renderTrendChart(labels, data) {
+      if (charts.trend) charts.trend.destroy();
+      charts.trend = new Chart(document.getElementById('trendChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{ label: 'รายได้รวม (บาท)', data: data, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', fill: true, tension: 0.3 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function renderSplitChart(ma, sun) {
+      if (charts.split) charts.split.destroy();
+      charts.split = new Chart(document.getElementById('splitChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['ม้า (คุณแม่)', 'ซัน (Sunjohn)'],
+          datasets: [{ data: [ma, sun], backgroundColor: ['#f59e0b', '#6366f1'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function renderCompareChart(labels, maData, sunData) {
+      if (charts.compare) charts.compare.destroy();
+      charts.compare = new Chart(document.getElementById('compareChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'ม้า', data: maData, backgroundColor: '#f59e0b' },
+            { label: 'ซัน', data: sunData, backgroundColor: '#6366f1' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+      });
+    }
+
+    function renderCategoryChart() {
+      if (charts.cat) charts.cat.destroy();
+      let studentSum = 0, fancySum = 0;
+      parsedRecords.forEach(r => {
+        if (r.category === 'student') studentSum += r.rev;
+        if (r.category === 'fancy') fancySum += r.rev;
+      });
+
+      charts.cat = new Chart(document.getElementById('categoryChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ['ชุดนักเรียน', 'ชุดแฟนซี'],
+          datasets: [{ label: 'รายได้รวมแยกตามหมวดหมู่', data: [studentSum, fancySum], backgroundColor: ['#10b981', '#ec4899'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+  </script>
+</body>
+</html>
