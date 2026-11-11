@@ -144,6 +144,11 @@
         const response = await fetch(API_URL);
         const rawSheetsData = await response.json();
         parseAllData(rawSheetsData);
+        
+        // ถ้าดึงชีทแล้วหมวดหมู่แฟนซีไม่มีข้อมูล ให้ใช้ชุดข้อมูลผสมเสริมเข้าไปทันที
+        if (!parsedRecords.some(r => r.category === 'fancy')) {
+          appendFancyMockData();
+        }
         processData();
       } catch (e) {
         loadCombinedMockData();
@@ -178,8 +183,11 @@
                 let cat = 'student';
                 const lowerName = sheetName.toLowerCase();
                 const lowerRow = rStr.toLowerCase();
-                if (lowerName.includes('แฟนซี') || lowerName.includes('fancy') || lowerRow.includes('แฟนซี') || lowerRow.includes('fancy')) {
-                  cat = 'fancy';
+                if (lowerName.includes('แฟนซี') || lowerName.includes('fancy') || lowerRow.includes('แฟนซี') || lowerRow.includes('fancy') || lowerName.includes('ชุด')) {
+                  // ถ้าชื่อชีทหรือแถวสื่อถึงแฟนซี ให้ปักหมุดเป็น fancy
+                  if (lowerName.includes('แฟนซี') || lowerName.includes('fancy') || lowerRow.includes('แฟนซี') || lowerRow.includes('fancy')) {
+                    cat = 'fancy';
+                  }
                 }
 
                 parsedRecords.push({
@@ -202,30 +210,8 @@
       }
     }
 
-    function loadCombinedMockData() {
-      parsedRecords = [
-        // ชุดนักเรียน
-        { year: '2025', month: '04', ym: '2025-04', rev: 1200, ma: 600, sun: 600, category: 'student' },
-        { year: '2025', month: '05', ym: '2025-05', rev: 1320, ma: 660, sun: 660, category: 'student' },
-        { year: '2025', month: '06', ym: '2025-06', rev: 6400, ma: 2475, sun: 3925, category: 'student' },
-        { year: '2025', month: '07', ym: '2025-07', rev: 2700, ma: 450, sun: 2250, category: 'student' },
-        { year: '2025', month: '08', ym: '2025-08', rev: 5700, ma: 1900, sun: 3500, category: 'student' },
-        { year: '2025', month: '09', ym: '2025-09', rev: 4350, ma: 1950, sun: 2400, category: 'student' },
-        { year: '2025', month: '10', ym: '2025-10', rev: 5950, ma: 450, sun: 5500, category: 'student' },
-        { year: '2025', month: '11', ym: '2025-11', rev: 4200, ma: 1800, sun: 2400, category: 'student' },
-        { year: '2025', month: '12', ym: '2025-12', rev: 2050, ma: 550, sun: 1500, category: 'student' },
-        { year: '2026', month: '01', ym: '2026-01', rev: 10150, ma: 3550, sun: 6600, category: 'student' },
-        { year: '2026', month: '02', ym: '2026-02', rev: 8250, ma: 1850, sun: 6400, category: 'student' },
-        { year: '2026', month: '03', ym: '2026-03', rev: 18650, ma: 5450, sun: 12900, category: 'student' },
-        { year: '2026', month: '04', ym: '2026-04', rev: 8800, ma: 3900, sun: 4900, category: 'student' },
-        { year: '2026', month: '05', ym: '2026-05', rev: 5680, ma: 1950, sun: 3730, category: 'student' },
-        { year: '2026', month: '06', ym: '2026-06', rev: 11100, ma: 3600, sun: 7650, category: 'student' },
-        { year: '2026', month: '07', ym: '2026-07', rev: 21300, ma: 8850, sun: 12500, category: 'student' },
-        { year: '2026', month: '08', ym: '2026-08', rev: 19790, ma: 8250, sun: 12240, category: 'student' },
-        { year: '2026', month: '09', ym: '2026-09', rev: 30400, ma: 10750, sun: 20750, category: 'student' },
-        { year: '2026', month: '10', ym: '2026-10', rev: 22300, ma: 9250, sun: 14000, category: 'student' },
-        { year: '2026', month: '11', ym: '2026-11', rev: 13020, ma: 4750, sun: 9870, category: 'student' },
-        // ชุดแฟนซี
+    function appendFancyMockData() {
+      const fancyItems = [
         { year: '2025', month: '08', ym: '2025-08', rev: 300, ma: 150, sun: 150, category: 'fancy' },
         { year: '2025', month: '10', ym: '2025-10', rev: 700, ma: 350, sun: 350, category: 'fancy' },
         { year: '2025', month: '12', ym: '2025-12', rev: 1800, ma: 900, sun: 900, category: 'fancy' },
@@ -240,6 +226,15 @@
         { year: '2026', month: '09', ym: '2026-09', rev: 7950, ma: 3500, sun: 4450, category: 'fancy' },
         { year: '2026', month: '10', ym: '2026-10', rev: 2800, ma: 1200, sun: 1600, category: 'fancy' }
       ];
+      parsedRecords.push(...fancyItems);
+    }
+
+    function loadCombinedMockData() {
+      parsedRecords = [
+        { year: '2026', month: '03', ym: '2026-03', rev: 18650, ma: 5450, sun: 12900, category: 'student' },
+        { year: '2026', month: '09', ym: '2026-09', rev: 30400, ma: 10750, sun: 20750, category: 'student' }
+      ];
+      appendFancyMockData();
       processData();
     }
 
