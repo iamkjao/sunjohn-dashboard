@@ -63,7 +63,7 @@
       </div>
 
       <div class="text-[11px] text-slate-400 font-medium">
-        ⚡ ล็อกกฎชุดแฟนซี: ซันรับ 100% / แม่ไม่ได้ส่วนแบ่ง
+        ⚡ อ่านข้อมูลจริงจาก Google Sheets (แฟนซี: ซันรับ 100%)
       </div>
     </div>
 
@@ -146,7 +146,7 @@
         parseAllData(rawSheetsData);
         processData();
       } catch (e) {
-        loadCombinedMockData();
+        console.error("Error loading data", e);
       }
     }
 
@@ -165,7 +165,7 @@
           if (rStr.includes('2025')) currentYear = '2025';
           if (rStr.includes('2026')) currentYear = '2026';
 
-          // 1. ฝั่งซ้าย (ชุดนักเรียน) - มีแบ่งส่วนแบ่งปกติ
+          // 1. ดึงฝั่งซ้าย (ชุดนักเรียน) - มีแบ่งส่วนแบ่งปกติ
           row.forEach((cell) => {
             if (typeof cell === 'string' && monthMap[cell.trim()]) {
               const monthCode = monthMap[cell.trim()];
@@ -188,15 +188,15 @@
             }
           });
 
-          // 2. ฝั่งขวา (ชุดแฟนซี) - บังคับให้แม่ไม่ได้ส่วนแบ่ง (ma = 0, sun = rev ทั้งหมด)
+          // 2. ดึงฝั่งขวา (ชุดแฟนซี) - บังคับให้แม่ได้ 0 บาท และซันรับเต็ม 100%
           row.forEach((cell, idx) => {
             if (idx >= 13 && typeof cell === 'string' && monthMap[cell.trim()]) {
               const monthCode = monthMap[cell.trim()];
               const rightNums = row.slice(idx, idx + 5).filter(n => typeof n === 'number' && n > 0);
               if (rightNums.length >= 1) {
                 let rev = rightNums[0] || 0;
-                let ma = 0;      // บังคับแม่เป็น 0 เสมอสำหรับชุดแฟนซี
-                let sun = rev;   // ซันรับเต็ม 100%
+                let ma = 0;      // แม่ไม่ได้ส่วนแบ่งชุดแฟนซี
+                let sun = rev;   // ซันรับเต็มจำนวน 100%
 
                 parsedRecords.push({
                   year: currentYear,
@@ -212,19 +212,6 @@
           });
         });
       }
-
-      if (parsedRecords.length === 0) {
-        loadCombinedMockData();
-      }
-    }
-
-    function loadCombinedMockData() {
-      parsedRecords = [
-        { year: '2026', month: '03', ym: '2026-03', rev: 18650, ma: 5450, sun: 12900, category: 'student' },
-        { year: '2025', month: '08', ym: '2025-08', rev: 300, ma: 0, sun: 300, category: 'fancy' },
-        { year: '2026', month: '09', ym: '2026-09', rev: 7950, ma: 0, sun: 7950, category: 'fancy' }
-      ];
-      processData();
     }
 
     function toggleTimeInputs() {
