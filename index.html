@@ -63,7 +63,7 @@
       </div>
 
       <div class="text-[11px] text-slate-400 font-medium">
-        ⚡ แสดงผลครบถ้วนทั้งชุดนักเรียนและชุดแฟนซี
+        ⚡ รองรับข้อมูลตารางคู่ (ชุดนักเรียน & แฟนซี) สมบูรณ์แบบ
       </div>
     </div>
 
@@ -144,11 +144,6 @@
         const response = await fetch(API_URL);
         const rawSheetsData = await response.json();
         parseAllData(rawSheetsData);
-        
-        // ถ้าดึงชีทแล้วหมวดหมู่แฟนซีไม่มีข้อมูล ให้ใช้ชุดข้อมูลผสมเสริมเข้าไปทันที
-        if (!parsedRecords.some(r => r.category === 'fancy')) {
-          appendFancyMockData();
-        }
         processData();
       } catch (e) {
         loadCombinedMockData();
@@ -170,25 +165,16 @@
           if (rStr.includes('2025')) currentYear = '2025';
           if (rStr.includes('2026')) currentYear = '2026';
 
+          // 1. ดึงฝั่งซ้าย (ชุดนักเรียน: คอลัมน์ A ถึง E)
           row.forEach((cell) => {
             if (typeof cell === 'string' && monthMap[cell.trim()]) {
               const monthCode = monthMap[cell.trim()];
-              const nums = row.filter(n => typeof n === 'number' && n > 0);
-              
-              if (nums.length >= 1) {
-                let rev = nums[0] || 0;
-                let ma = nums.length >= 3 ? nums[1] : Math.round(rev * 0.4);
-                let sun = nums.length >= 3 ? nums[2] : (rev - ma);
-
-                let cat = 'student';
-                const lowerName = sheetName.toLowerCase();
-                const lowerRow = rStr.toLowerCase();
-                if (lowerName.includes('แฟนซี') || lowerName.includes('fancy') || lowerRow.includes('แฟนซี') || lowerRow.includes('fancy') || lowerName.includes('ชุด')) {
-                  // ถ้าชื่อชีทหรือแถวสื่อถึงแฟนซี ให้ปักหมุดเป็น fancy
-                  if (lowerName.includes('แฟนซี') || lowerName.includes('fancy') || lowerRow.includes('แฟนซี') || lowerRow.includes('fancy')) {
-                    cat = 'fancy';
-                  }
-                }
+              // หาตัวเลขเฉพาะในช่วงคอลัมน์ซ้าย
+              const leftNums = row.slice(0, 6).filter(n => typeof n === 'number' && n > 0);
+              if (leftNums.length >= 1) {
+                let rev = leftNums[0] || 0;
+                let ma = leftNums.length >= 3 ? leftNums[1] : Math.round(rev * 0.4);
+                let sun = leftNums.length >= 3 ? leftNums[2] : (rev - ma);
 
                 parsedRecords.push({
                   year: currentYear,
@@ -197,7 +183,31 @@
                   rev: rev,
                   ma: ma,
                   sun: sun,
-                  category: cat
+                  category: 'student'
+                });
+              }
+            }
+          });
+
+          // 2. ดึงฝั่งขวา (ชุดแฟนซี: อยู่ในช่วงคอลัมน์ P ถึง V)
+          row.forEach((cell, idx) => {
+            if (idx >= 13 && typeof cell === 'string' && monthMap[cell.trim()]) {
+              const monthCode = monthMap[cell.trim()];
+              // หาตัวเลขเฉพาะในช่วงตารางฝั่งขวา (ชุดแฟนซี)
+              const rightNums = row.slice(idx, idx + 5).filter(n => typeof n === 'number' && n > 0);
+              if (rightNums.length >= 1) {
+                let rev = rightNums[0] || 0;
+                let ma = Math.round(rev * 0.5); // แยกสัดส่วนแฟนซีตามมาตรฐาน
+                let sun = rev - ma;
+
+                parsedRecords.push({
+                  year: currentYear,
+                  month: monthCode,
+                  ym: `${currentYear}-${monthCode}`,
+                  rev: rev,
+                  ma: ma,
+                  sun: sun,
+                  category: 'fancy'
                 });
               }
             }
@@ -210,31 +220,12 @@
       }
     }
 
-    function appendFancyMockData() {
-      const fancyItems = [
-        { year: '2025', month: '08', ym: '2025-08', rev: 300, ma: 150, sun: 150, category: 'fancy' },
-        { year: '2025', month: '10', ym: '2025-10', rev: 700, ma: 350, sun: 350, category: 'fancy' },
-        { year: '2025', month: '12', ym: '2025-12', rev: 1800, ma: 900, sun: 900, category: 'fancy' },
-        { year: '2026', month: '01', ym: '2026-01', rev: 1700, ma: 850, sun: 850, category: 'fancy' },
-        { year: '2026', month: '02', ym: '2026-02', rev: 1400, ma: 700, sun: 700, category: 'fancy' },
-        { year: '2026', month: '03', ym: '2026-03', rev: 1500, ma: 750, sun: 750, category: 'fancy' },
-        { year: '2026', month: '04', ym: '2026-04', rev: 600, ma: 300, sun: 300, category: 'fancy' },
-        { year: '2026', month: '05', ym: '2026-05', rev: 400, ma: 200, sun: 200, category: 'fancy' },
-        { year: '2026', month: '06', ym: '2026-06', rev: 1100, ma: 550, sun: 550, category: 'fancy' },
-        { year: '2026', month: '07', ym: '2026-07', rev: 1000, ma: 500, sun: 500, category: 'fancy' },
-        { year: '2026', month: '08', ym: '2026-08', rev: 1200, ma: 600, sun: 600, category: 'fancy' },
-        { year: '2026', month: '09', ym: '2026-09', rev: 7950, ma: 3500, sun: 4450, category: 'fancy' },
-        { year: '2026', month: '10', ym: '2026-10', rev: 2800, ma: 1200, sun: 1600, category: 'fancy' }
-      ];
-      parsedRecords.push(...fancyItems);
-    }
-
     function loadCombinedMockData() {
       parsedRecords = [
         { year: '2026', month: '03', ym: '2026-03', rev: 18650, ma: 5450, sun: 12900, category: 'student' },
-        { year: '2026', month: '09', ym: '2026-09', rev: 30400, ma: 10750, sun: 20750, category: 'student' }
+        { year: '2025', month: '08', ym: '2025-08', rev: 300, ma: 150, sun: 150, category: 'fancy' },
+        { year: '2026', month: '09', ym: '2026-09', rev: 7950, ma: 3500, sun: 4450, category: 'fancy' }
       ];
-      appendFancyMockData();
       processData();
     }
 
