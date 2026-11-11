@@ -48,6 +48,15 @@
         </div>
 
         <div class="flex items-center gap-1.5">
+          <label class="text-slate-500">ช่องทาง:</label>
+          <select id="channelFilter" onchange="processData()" class="border border-slate-300 rounded-lg p-2 bg-slate-50 text-slate-800">
+            <option value="all">ทุกช่องทาง (หน้าร้าน + ออนไลน์)</option>
+            <option value="store">หน้าร้าน</option>
+            <option value="online">ออนไลน์</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
           <label class="text-slate-500">ช่วงเวลา:</label>
           <select id="timeMode" onchange="toggleTimeInputs()" class="border border-slate-300 rounded-lg p-2 bg-slate-50 text-slate-800">
             <option value="all">ทั้งหมด (All Time)</option>
@@ -63,7 +72,7 @@
       </div>
 
       <div class="text-[11px] text-slate-400 font-medium">
-        ⚡ ชุดแฟนซี: ซันรับ 100% (แม่ไม่ได้ส่วนแบ่ง) สมบูรณ์แบบ
+        ⚡ รองรับแยกหน้าร้าน / ออนไลน์ และชุดแฟนซี (ซันรับ 100%) สมบูรณ์แบบ
       </div>
     </div>
 
@@ -144,11 +153,6 @@
         const response = await fetch(API_URL);
         const rawSheetsData = await response.json();
         parseAllData(rawSheetsData);
-        
-        // ถ้าฝั่งชุดนักเรียนมา แต่ฝั่งแฟนซีไม่ถูกหยิบมาด้วย ให้เติมข้อมูลชุดแฟนซีที่ถูกต้องลงไปทันที
-        if (!parsedRecords.some(r => r.category === 'fancy')) {
-          appendFancyData();
-        }
         processData();
       } catch (e) {
         loadDefaultData();
@@ -162,23 +166,27 @@
       for (let sheetName in rawSheetsData) {
         const rows = rawSheetsData[sheetName];
         let currentYear = '2026';
+        let currentChannel = 'store'; // เริ่มต้นที่หน้าร้าน
 
         rows.forEach(row => {
           if (!row || row.length === 0) return;
           const rStr = row.join(' ');
 
+          if (rStr.includes('หน้าร้าน')) currentChannel = 'store';
+          if (rStr.includes('online')) currentChannel = 'online';
+
           if (rStr.includes('2025')) currentYear = '2025';
           if (rStr.includes('2026')) currentYear = '2026';
 
-          // 1. ดึงฝั่งซ้าย (ชุดนักเรียน) - มีแบ่งส่วนแบ่งปกติ
-          row.forEach((cell) => {
-            if (typeof cell === 'string' && monthMap[cell.trim()]) {
+          // 1. ดึงข้อมูลตารางกลาง (ชุดนักเรียน แยกหน้าร้าน/ออนไลน์ คอลัมน์ G-L)
+          row.forEach((cell, idx) => {
+            if (idx >= 6 && idx <= 10 && typeof cell === 'string' && monthMap[cell.trim()]) {
               const monthCode = monthMap[cell.trim()];
-              const leftNums = row.slice(0, 6).filter(n => typeof n === 'number' && n > 0);
-              if (leftNums.length >= 1) {
-                let rev = leftNums[0] || 0;
-                let ma = leftNums.length >= 3 ? leftNums[1] : Math.round(rev * 0.4);
-                let sun = leftNums.length >= 3 ? leftNums[2] : (rev - ma);
+              const nums = row.slice(idx, idx + 5).filter(n => typeof n === 'number' && n > 0);
+              if (nums.length >= 1) {
+                let rev = nums[0] || 0;
+                let ma = nums.length >= 3 ? nums[1] : Math.round(rev * 0.4);
+                let sun = nums.length >= 3 ? nums[2] : (rev - ma);
 
                 parsedRecords.push({
                   year: currentYear,
@@ -187,7 +195,8 @@
                   rev: rev,
                   ma: ma,
                   sun: sun,
-                  category: 'student'
+                  category: 'student',
+                  channel: currentChannel
                 });
               }
             }
@@ -195,7 +204,7 @@
         });
       }
 
-      // เติมข้อมูลชุดแฟนซีตามตารางจริงในชีทของคุณ (แม่ได้ 0 / ซันรับ 100%) เสมอ
+      // 2. เติมข้อมูลชุดแฟนซี (ซันรับ 100% / แม่ได้ 0) ตามตารางจริงฝั่งขวา
       appendFancyData();
 
       if (parsedRecords.length === 0) {
@@ -205,21 +214,20 @@
 
     function appendFancyData() {
       const fancyItems = [
-        { year: '2025', month: '08', ym: '2025-08', rev: 300, ma: 0, sun: 300, category: 'fancy' },
-        { year: '2025', month: '10', ym: '2025-10', rev: 700, ma: 0, sun: 700, category: 'fancy' },
-        { year: '2025', month: '12', ym: '2025-12', rev: 1800, ma: 0, sun: 1800, category: 'fancy' },
-        { year: '2026', month: '01', ym: '2026-01', rev: 1700, ma: 0, sun: 1700, category: 'fancy' },
-        { year: '2026', month: '02', ym: '2026-02', rev: 1400, ma: 0, sun: 1400, category: 'fancy' },
-        { year: '2026', month: '03', ym: '2026-03', rev: 1500, ma: 0, sun: 1500, category: 'fancy' },
-        { year: '2026', month: '04', ym: '2026-04', rev: 600, ma: 0, sun: 600, category: 'fancy' },
-        { year: '2026', month: '05', ym: '2026-05', rev: 400, ma: 0, sun: 400, category: 'fancy' },
-        { year: '2026', month: '06', ym: '2026-06', rev: 1100, ma: 0, sun: 1100, category: 'fancy' },
-        { year: '2026', month: '07', ym: '2026-07', rev: 1000, ma: 0, sun: 1000, category: 'fancy' },
-        { year: '2026', month: '08', ym: '2026-08', rev: 1200, ma: 0, sun: 1200, category: 'fancy' },
-        { year: '2026', month: '09', ym: '2026-09', rev: 7950, ma: 0, sun: 7950, category: 'fancy' },
-        { year: '2026', month: '10', ym: '2026-10', rev: 2800, ma: 0, sun: 2800, category: 'fancy' }
+        { year: '2025', month: '08', ym: '2025-08', rev: 300, ma: 0, sun: 300, category: 'fancy', channel: 'store' },
+        { year: '2025', month: '10', ym: '2025-10', rev: 700, ma: 0, sun: 700, category: 'fancy', channel: 'store' },
+        { year: '2025', month: '12', ym: '2025-12', rev: 1800, ma: 0, sun: 1800, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '01', ym: '2026-01', rev: 1700, ma: 0, sun: 1700, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '02', ym: '2026-02', rev: 1400, ma: 0, sun: 1400, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '03', ym: '2026-03', rev: 1500, ma: 0, sun: 1500, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '04', ym: '2026-04', rev: 600, ma: 0, sun: 600, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '05', ym: '2026-05', rev: 400, ma: 0, sun: 400, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '06', ym: '2026-06', rev: 1100, ma: 0, sun: 1100, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '07', ym: '2026-07', rev: 1000, ma: 0, sun: 1000, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '08', ym: '2026-08', rev: 1200, ma: 0, sun: 1200, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '09', ym: '2026-09', rev: 7950, ma: 0, sun: 7950, category: 'fancy', channel: 'store' },
+        { year: '2026', month: '10', ym: '2026-10', rev: 2800, ma: 0, sun: 2800, category: 'fancy', channel: 'store' }
       ];
-      // ป้องกันการaddซ้ำ
       fancyItems.forEach(item => {
         if (!parsedRecords.some(r => r.category === 'fancy' && r.ym === item.ym)) {
           parsedRecords.push(item);
@@ -229,7 +237,7 @@
 
     function loadDefaultData() {
       parsedRecords = [
-        { year: '2026', month: '03', ym: '2026-03', rev: 18650, ma: 5450, sun: 12900, category: 'student' }
+        { year: '2026', month: '03', ym: '2026-03', rev: 18650, ma: 5450, sun: 12900, category: 'student', channel: 'store' }
       ];
       appendFancyData();
       processData();
@@ -244,12 +252,14 @@
 
     function processData() {
       const catFilter = document.getElementById('catFilter').value;
+      const channelFilter = document.getElementById('channelFilter').value;
       const timeMode = document.getElementById('timeMode').value;
       const monthVal = document.getElementById('monthPicker').value;
       const yearVal = document.getElementById('yearPicker').value;
 
       let list = parsedRecords.filter(r => {
         if (catFilter !== 'all' && r.category !== catFilter) return false;
+        if (channelFilter !== 'all' && r.channel !== channelFilter) return false;
         if (timeMode === 'monthly' && monthVal && r.ym !== monthVal) return false;
         if (timeMode === 'yearly' && yearVal && r.year !== String(yearVal)) return false;
         return true;
