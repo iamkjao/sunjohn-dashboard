@@ -63,7 +63,7 @@
       </div>
 
       <div class="text-[11px] text-slate-400 font-medium">
-        ⚡ ตั้งค่าส่วนแบ่งชุดแฟนซีให้ถูกต้อง (ซันรับเต็มจำนวน / แม่ไม่ได้ส่วนแบ่ง)
+        ⚡ อัปเดตส่วนแบ่งชุดแฟนซีถูกต้อง (ซันรับ 100% / แม่ไม่ได้ส่วนแบ่ง)
       </div>
     </div>
 
@@ -188,14 +188,14 @@
             }
           });
 
-          // 2. ฝั่งขวา (ชุดแฟนซี) - แม่ไม่ได้ส่วนแบ่ง (ซันรับ 100%)
+          // 2. ฝั่งขวา (ชุดแฟนซี) - แม่ไม่ได้ส่วนแบ่ง (ซันรับเต็ม 100%)
           row.forEach((cell, idx) => {
             if (idx >= 13 && typeof cell === 'string' && monthMap[cell.trim()]) {
               const monthCode = monthMap[cell.trim()];
               const rightNums = row.slice(idx, idx + 5).filter(n => typeof n === 'number' && n > 0);
               if (rightNums.length >= 1) {
                 let rev = rightNums[0] || 0;
-                let ma = 0;      // คุณแม่ไม่ได้ส่วนแบ่งสำหรับชุดแฟนซี
+                let ma = 0;      // แม่ไม่ได้ส่วนแบ่งชุดแฟนซี
                 let sun = rev;   // ซันรับเต็มจำนวน
 
                 parsedRecords.push({
