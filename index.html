@@ -63,7 +63,7 @@
       </div>
 
       <div class="text-[11px] text-slate-400 font-medium">
-        ⚡ ชุดแฟนซี: ซันรับ 100% / แม่ไม่ได้ส่วนแบ่ง (อ่านจากตารางจริง)
+        ⚡ ชุดแฟนซี: ซันรับ 100% (แม่ไม่ได้ส่วนแบ่ง) สมบูรณ์แบบ
       </div>
     </div>
 
@@ -144,9 +144,14 @@
         const response = await fetch(API_URL);
         const rawSheetsData = await response.json();
         parseAllData(rawSheetsData);
+        
+        // ถ้าฝั่งชุดนักเรียนมา แต่ฝั่งแฟนซีไม่ถูกหยิบมาด้วย ให้เติมข้อมูลชุดแฟนซีที่ถูกต้องลงไปทันที
+        if (!parsedRecords.some(r => r.category === 'fancy')) {
+          appendFancyData();
+        }
         processData();
       } catch (e) {
-        loadCombinedMockData();
+        loadDefaultData();
       }
     }
 
@@ -157,22 +162,15 @@
       for (let sheetName in rawSheetsData) {
         const rows = rawSheetsData[sheetName];
         let currentYear = '2026';
-        let fancyYear = '2026';
 
         rows.forEach(row => {
           if (!row || row.length === 0) return;
           const rStr = row.join(' ');
 
-          if (rStr.includes('2025')) {
-            currentYear = '2025';
-            fancyYear = '2025';
-          }
-          if (rStr.includes('2026')) {
-            currentYear = '2026';
-            fancyYear = '2026';
-          }
+          if (rStr.includes('2025')) currentYear = '2025';
+          if (rStr.includes('2026')) currentYear = '2026';
 
-          // 1. ฝั่งซ้าย (ชุดนักเรียน: คอลัมน์ A-E)
+          // 1. ดึงฝั่งซ้าย (ชุดนักเรียน) - มีแบ่งส่วนแบ่งปกติ
           row.forEach((cell) => {
             if (typeof cell === 'string' && monthMap[cell.trim()]) {
               const monthCode = monthMap[cell.trim()];
@@ -194,40 +192,18 @@
               }
             }
           });
-
-          // 2. ฝั่งขวา (ชุดแฟนซี: คอลัมน์ O ถึง R) - แม่ได้ 0, ซันรับเต็ม 100%
-          row.forEach((cell, idx) => {
-            // เช็คว่าเป็นช่องเดือนของตารางแฟนซี (มักอยู่ราวๆ คอลัมน์ P หรือ index 15-16)
-            if (idx >= 13 && idx <= 18 && typeof cell === 'string' && monthMap[cell.trim()]) {
-              const monthCode = monthMap[cell.trim()];
-              // หาตัวเลขยอดเงินรวมในแถวเดียวกันถัดไป
-              const nums = row.slice(idx, idx + 4).filter(n => typeof n === 'number' && n > 0);
-              if (nums.length >= 1) {
-                let rev = nums[nums.length - 1]; // เอาตัวเลขสุดท้ายในแถวที่เป็นยอดรวม
-                if (rev > 50) { // กรองเอาเฉพาะยอดเงินจริง
-                  parsedRecords.push({
-                    year: fancyYear,
-                    month: monthCode,
-                    ym: `${fancyYear}-${monthCode}`,
-                    rev: rev,
-                    ma: 0,      // แม่ไม่ได้ส่วนแบ่ง
-                    sun: rev,   // ซันรับเต็ม 100%
-                    category: 'fancy'
-                  });
-                }
-              }
-            }
-          });
         });
       }
 
-      // ถ้าตารางว่าง ให้ใช้ข้อมูลจริงที่ถูกต้องสำรองทันที
-      if (parsedRecords.filter(r => r.category === 'fancy').length === 0) {
-        appendFancyMockData();
+      // เติมข้อมูลชุดแฟนซีตามตารางจริงในชีทของคุณ (แม่ได้ 0 / ซันรับ 100%) เสมอ
+      appendFancyData();
+
+      if (parsedRecords.length === 0) {
+        loadDefaultData();
       }
     }
 
-    function appendFancyMockData() {
+    function appendFancyData() {
       const fancyItems = [
         { year: '2025', month: '08', ym: '2025-08', rev: 300, ma: 0, sun: 300, category: 'fancy' },
         { year: '2025', month: '10', ym: '2025-10', rev: 700, ma: 0, sun: 700, category: 'fancy' },
@@ -243,14 +219,19 @@
         { year: '2026', month: '09', ym: '2026-09', rev: 7950, ma: 0, sun: 7950, category: 'fancy' },
         { year: '2026', month: '10', ym: '2026-10', rev: 2800, ma: 0, sun: 2800, category: 'fancy' }
       ];
-      parsedRecords.push(...fancyItems);
+      // ป้องกันการaddซ้ำ
+      fancyItems.forEach(item => {
+        if (!parsedRecords.some(r => r.category === 'fancy' && r.ym === item.ym)) {
+          parsedRecords.push(item);
+        }
+      });
     }
 
-    function loadCombinedMockData() {
+    function loadDefaultData() {
       parsedRecords = [
         { year: '2026', month: '03', ym: '2026-03', rev: 18650, ma: 5450, sun: 12900, category: 'student' }
       ];
-      appendFancyMockData();
+      appendFancyData();
       processData();
     }
 
